@@ -13,69 +13,57 @@ import keyboard
 from pynput.mouse import Button, Controller
 from pynput.mouse import Listener
 
-root = tkinter.Tk()
 
+ImageFile.LOAD_TRUNCATED_IMAGES = True
+Image.MAX_IMAGE_PIXELS = None
+SetForegroundWindow = windll.user32.SetForegroundWindow
+
+#1是对战模式 2是排队模式
+isDuelFlag = 1
+isTop = True
+root = tkinter.Tk()
 #获取真实的分辨率宽
 real_wide = win32print.GetDeviceCaps(win32gui.GetDC(0), win32con.DESKTOPHORZRES)
 
 #获取缩放后的分辨率宽
 screen_wide = win32api.GetSystemMetrics(0) 
 proportion = round(real_wide / screen_wide, 2)
-print(f"缩放比为{proportion}")
-#翻译窗口位置
-window_x = 29/proportion
-window_y = 458/proportion
-window_w = 371/proportion
-window_h = 397/proportion
+print("缩放比例：",proportion)
 
-string = f"{int(window_w)}x{int(window_h)}+{int(window_x)}+{int(window_y)}"
-print(string)
+#决斗界面窗口位置
+window_duel_x = 29/1920
+window_duel_y = 458/1080
+window_duel_w = 371/1920
+window_duel_h = 397/1080
+
+#deck界面窗口位置
+window_deck_x = 53/1920
+window_deck_y = 464/1080
+window_deck_w = 403/1920
+window_deck_h = 302/1080
+
+string = "400x333+50+300"
 root.geometry(string)
-
-def on_closing():
-    if messagebox.askokcancel("Quit", "Do you want to quit?"):
-        listener.stop()
-        root.destroy()        
-        sys.exit(0)
 
 #卡牌名称
 name = tkinter.StringVar()
-#空行(真的需要这样写吗)
-blankLine = tkinter.StringVar()
 #卡片内容
 cardContain = tkinter.StringVar()
 
 name.set("Def")
-blankLine.set("")
 cardContain.set("DefaultContain")
 
-#刷新
-def updatingTest():
-    nameLabel = tkinter.Label(root, textvariable=name,font=("微软雅黑", 20, "bold")).pack()
-    blankLineLabel = tkinter.Label(root, textvariable=blankLine).pack()
-    cardContainLabel = tkinter.Label(root, textvariable=cardContain,wraplength=window_w-20).pack()
+tkinter.Label(root, textvariable=name,font=("微软雅黑", 18, "bold")).pack(padx=10)
+#descLabel = tkinter.Label(root, textvariable=cardContain,font=(16),wraplength=300)
 
-def updatingTest1():
-    window_x = 100
-    string = f"{int(window_w)}x{int(window_h)}+{int(window_x)}+{int(window_y)}"
-    root.geometry(string)
-    root.update()
-    cardContain.set("DefauContainDefauContainDefauContainDefauContain")
-    
-def on_click( x, y, button, pressed):
-    print ('Mouse clicked at ({0}, {1}) with {2}'.format(x, y, button))
+descLabel = tkinter.Message(root, textvariable=cardContain)
+descLabel.pack()
 
+#更新内容
+def updatingTest(card):
+    name.set(card[0])
+    cardContain.set(card[1])
 
-
-
-
-
-
-
-
-ImageFile.LOAD_TRUNCATED_IMAGES = True
-Image.MAX_IMAGE_PIXELS = None
-SetForegroundWindow = windll.user32.SetForegroundWindow
 
 _img_p=['.png','.jpg']
 
@@ -115,8 +103,27 @@ def hammingDist(s1, s2):
     assert len(s1) == len(s2)
     return sum([ch1 != ch2 for ch1, ch2 in zip(s1, s2)])
     
-#thishwnd = win32gui.FindWindow(None, title)
-#win32gui.SetWindowPos(thishwnd,win32con.HWND_NOTOPMOST,0, 0, 440, 600, 0)
+
+#改变切换翻译场景
+def changeDeckwithDuel():
+    global isDuelFlag
+    if isDuelFlag == 1: 
+        name.set("切换为对战模式")
+        isDuelFlag = 2 
+    else: 
+        name.set("切换为牌堆模式")
+        isDuelFlag = 1
+    
+#窗口置顶
+def changeTop():
+    global isTop
+    if isTop: 
+        isTop=False
+        root.attributes("-topmost", False)
+    else: 
+        isTop=True
+        root.attributes("-topmost", True)
+    root.update()
 
 def getFileList(dir, fileList):
     newDir = dir
@@ -265,30 +272,12 @@ def window_shot_image(hwnd:int):
         "current_window_zoom":(w/1920,h/1080),
     }
       
-      
+  
 
 def get_image_db_cache():
     generate_card_img_basic_dhash(getFileList(fileDir,[]))
     _db_image_cache=get_card_img_dhash_cache()
     return _db_image_cache
-
-def on_top():
-    thishwnd = win32gui.FindWindow(None, title)
-    rect = win32gui.GetWindowRect(thishwnd)
-    x1 = rect[0]
-    y1 = rect[1]
-    w1 = rect[2] - x1
-    h1 = rect[3] - y1
-    win32gui.SetWindowPos(thishwnd,win32con.HWND_TOPMOST,x1, y1, w1, h1, 0)
-    
-def non_top():
-    thishwnd = win32gui.FindWindow(None, title)
-    rect = win32gui.GetWindowRect(thishwnd)
-    x1 = rect[0]
-    y1 = rect[1]
-    w1 = rect[2] - x1
-    h1 = rect[3] - y1
-    win32gui.SetWindowPos(thishwnd,win32con.HWND_NOTOPMOST,x1, y1, w1, h1, 0)
 
 
 def cv_card_info_at_deck_room(debug:bool=False):
@@ -418,6 +407,7 @@ def translate(type:int,cache:list,debug:bool=False):
         card['name']=data[0]
         card['desc']=data[1]
     ygo_sql.close()
+    updatingTest(data)
     print('匹配用时: %.6f 秒'%(end_time-start_time))
     print(f"识别结果【匹配概率由高到低排序】")
     for card in results:
@@ -427,49 +417,61 @@ def translate(type:int,cache:list,debug:bool=False):
     print("-----------------------------------")
     print("shift+g翻译卡组卡片,shift+f翻译决斗中卡片,ctrl+q关闭\n请确保您已经点开了目标卡片的详细信息!!!")
 
+cache=get_image_db_cache()
+enable_debug=True
+
+#鼠标点击事件 侧键x1
+def on_click( x, y, button, pressed):
+    print ('Mouse clicked at ({0}, {1}) with {2}'.format(x, y, button))
+    if(button == Button.x2 and pressed):
+        translate(isDuelFlag,cache,enable_debug)
+
+
+#自动找位置
 def setLocation():
+    md_process_window_name='masterduel'
     gamehwnd = win32gui.FindWindow(None, md_process_window_name)
     rect = win32gui.GetWindowRect(gamehwnd)
-    left = rect[0]
-    top = rect[1]
-    gamew = rect[2] - left
-    gameh = rect[3] - top
+    print("获取游戏窗口位置:{0},{1},{2},{3}".format(rect[0],rect[1],rect[2],rect[3]))
     
-    #这几个也要乘以缩放比
-    print(left)
-    print(top)
-    zoom_w=gamew/1920
-    zoom_h=gameh/1080
-    x = (int)(left+zoom_w*window_x)
-    y = top+zoom_h*window_y
-    w = zoom_w*window_w
-    h = zoom_h*window_h
-    print(x)
-    print(y)
-    print(w)
-    print(h)
+    if isDuelFlag == 2: 
+        x = (int)(rect[0]+(rect[2]-rect[0])*window_duel_x)
+        y = (int)(rect[1]+(rect[3]-rect[1])*window_duel_y)
+        w = (int)((rect[2]-rect[0])*window_duel_w)
+        h = (int)((rect[3]-rect[1])*window_duel_h)
+    else: 
+        x = (int)(rect[0]+(rect[2]-rect[0])*window_deck_x)
+        y = (int)(rect[1]+(rect[3]-rect[1])*window_deck_y)
+        w = (int)((rect[2]-rect[0])*window_deck_w)
+        h = (int)((rect[3]-rect[1])*window_deck_h)
+    
+    
+
     string = f"{int(w)}x{int(h)}+{int(x)}+{int(y)}"
     print(string)
+    #descLabel.config(wraplength=0.9*w)
     root.geometry(string)
     root.update()
 
-    
 
-
-
-cache=get_image_db_cache()
-enable_debug=False
 print("shift+g翻译卡组卡片,shift+f翻译决斗中卡片,ctrl+q关闭\n请确保您已经点开了目标卡片的详细信息!!!")
-keyboard.add_hotkey('shift+g',translate,args=(1,cache,enable_debug))
-keyboard.add_hotkey('shift+f',translate,args=(2,cache,enable_debug))
-keyboard.add_hotkey('f1',on_top)
-keyboard.add_hotkey('f2',non_top)
+keyboard.add_hotkey('f1',changeTop)
+keyboard.add_hotkey('f2',changeDeckwithDuel)
 keyboard.add_hotkey('f3',setLocation)
 
 listener = Listener(on_click=on_click)
 listener.start()
 
+#关闭按钮点击事件
+def on_closing():
+    if messagebox.askokcancel("Quit", "Do you want to quit?"):
+        listener.stop()
+        root.destroy()        
+        sys.exit(0)
+
+tkinter.Button(root, text ="关闭",anchor="sw", command = on_closing).place(x=10,y=10)
 root.attributes("-topmost", True)
+root.overrideredirect(True)
 root.protocol('WM_DELETE_WINDOW', on_closing)
 root.mainloop()
 
